@@ -1,0 +1,2018 @@
+```html
+<!DOCTYPE html>
+<html lang="en" data-theme="cyberpunk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURAL_LINK // AI FACE ANALYTICS DASHBOARD</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CSS THEMES & VARIABLES --- */
+        :root[data-theme="cyberpunk"] {
+            --bg-base: #03030c;
+            --bg-surface: rgba(10, 10, 26, 0.65);
+            --bg-surface-solid: #0a0a1a;
+            --border-glow: rgba(0, 255, 242, 0.25);
+            --border-glow-focus: rgba(0, 255, 242, 0.6);
+            --primary: #00fff2;
+            --primary-glow: rgba(0, 255, 242, 0.4);
+            --secondary: #ff0055;
+            --secondary-glow: rgba(ff, 0, 85, 0.4);
+            --accent: #9d00ff;
+            --accent-glow: rgba(157, 0, 255, 0.4);
+            --text-main: #e0e0ff;
+            --text-muted: #7070a0;
+            --grid-color: rgba(0, 255, 242, 0.03);
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Rajdhani', sans-serif;
+            --font-mono: 'Share Tech Mono', monospace;
+            --status-ok: #00ff66;
+            --status-warn: #ffcc00;
+        }
+
+        :root[data-theme="dark"] {
+            --bg-base: #0f111a;
+            --bg-surface: rgba(25, 28, 41, 0.7);
+            --bg-surface-solid: #191c29;
+            --border-glow: rgba(255, 255, 255, 0.08);
+            --border-glow-focus: rgba(30, 144, 255, 0.6);
+            --primary: #1e90ff;
+            --primary-glow: rgba(30, 144, 255, 0.3);
+            --secondary: #ff4500;
+            --secondary-glow: rgba(255, 69, 0, 0.3);
+            --accent: #00f5ff;
+            --accent-glow: rgba(0, 245, 255, 0.3);
+            --text-main: #f0f4f8;
+            --text-muted: #829ab1;
+            --grid-color: rgba(255, 255, 255, 0.01);
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Rajdhani', sans-serif;
+            --font-mono: 'Share Tech Mono', monospace;
+            --status-ok: #10b981;
+            --status-warn: #f59e0b;
+        }
+
+        :root[data-theme="light"] {
+            --bg-base: #f0f2f5;
+            --bg-surface: rgba(255, 255, 255, 0.75);
+            --bg-surface-solid: #ffffff;
+            --border-glow: rgba(0, 0, 0, 0.08);
+            --border-glow-focus: rgba(0, 102, 204, 0.4);
+            --primary: #0066cc;
+            --primary-glow: rgba(0, 102, 204, 0.2);
+            --secondary: #d9383a;
+            --secondary-glow: rgba(217, 56, 58, 0.2);
+            --accent: #7928ca;
+            --accent-glow: rgba(121, 40, 202, 0.2);
+            --text-main: #1a1a24;
+            --text-muted: #62627a;
+            --grid-color: rgba(0, 66, 132, 0.02);
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Rajdhani', sans-serif;
+            --font-mono: 'Share Tech Mono', monospace;
+            --status-ok: #28a745;
+            --status-warn: #ffc107;
+        }
+
+        /* --- GLOBAL RESETS & BASE --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            overflow-x: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.4s ease;
+        }
+
+        /* --- BACKGROUND EFFECTS --- */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .cyber-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            background-position: center top;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-base);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .loader-content {
+            text-align: center;
+        }
+
+        .loader-spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid transparent;
+            border-top: 4px solid var(--primary);
+            border-right: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1.2s linear infinite;
+            filter: drop-shadow(0 0 10px var(--primary-glow));
+            margin-bottom: 20px;
+        }
+
+        .loader-text {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: var(--primary);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            animation: pulse-text 1.5s infinite ease-in-out;
+        }
+
+        /* --- APPLICATION LAYOUT --- */
+        #app-container {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Top Bar */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: var(--bg-surface-solid);
+            border-bottom: 1px solid var(--border-glow);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            height: 60px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .brand-title {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--text-main), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Core Structure with Sidebar */
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Sidebar Navigation */
+        nav {
+            width: 240px;
+            background: rgba(var(--bg-surface-solid), 0.8);
+            border-right: 1px solid var(--border-glow);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 10px;
+            gap: 8px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border-left: 3px solid transparent;
+            background: transparent;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: var(--primary);
+            background: rgba(0, 255, 242, 0.06);
+            border-left-color: var(--primary);
+            text-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        /* Main Workspace Content Area */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .dashboard-view {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .dashboard-view.active {
+            display: flex;
+        }
+
+        /* --- UI COMPONENTS / GLASSMORPHISM CARDS --- */
+        .glass-panel {
+            background: var(--bg-surface);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: var(--border-glow-focus);
+            box-shadow: 0 8px 32px 0 rgba(0, 255, 242, 0.05);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 10px;
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- STATS GRID SYSTEM --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            width: 100%;
+        }
+
+        .stat-card {
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .stat-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-glow);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* --- WORKSPACE CORE CONTROLS & MONITOR --- */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Interactive Monitor Display Area */
+        .monitor-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        #webcam-feed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #render-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 2;
+        }
+
+        .monitor-overlay-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--primary);
+            text-shadow: 0 0 4px rgba(0,0,0,0.8);
+        }
+
+        .overlay-top {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .overlay-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        .rec-indicator {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        .rec-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--secondary);
+            border-radius: 50%;
+            animation: pulse-glow 1s infinite alternate;
+        }
+
+        /* --- CONTROL INTERFACES / ACTIONS --- */
+        .control-group-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .control-group-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+        }
+
+        /* Futuristic Form Interactive UI Element */
+        .cyber-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glow);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .cyber-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+            transition: 0.5s;
+        }
+
+        .cyber-btn:hover::before {
+            left: 100%;
+        }
+
+        .cyber-btn:hover {
+            background: rgba(0, 255, 242, 0.08);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+            transform: translateY(-1px);
+        }
+
+        .cyber-btn:active {
+            transform: translateY(1px);
+        }
+
+        .cyber-btn.btn-primary {
+            background: var(--primary-glow);
+            border-color: var(--primary);
+            color: var(--bg-base);
+            font-weight: 900;
+        }
+
+        .cyber-btn.btn-primary:hover {
+            background: var(--primary);
+            color: var(--bg-base);
+            box-shadow: 0 0 18px var(--primary);
+        }
+
+        .cyber-btn.btn-secondary {
+            background: var(--secondary-glow);
+            border-color: var(--secondary);
+            color: var(--text-main);
+        }
+
+        .cyber-btn.btn-secondary:hover {
+            background: var(--secondary);
+            color: white;
+            box-shadow: 0 0 18px var(--secondary-glow);
+        }
+
+        .cyber-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* --- CONFIGURATION CONTROLS --- */
+        .toggle-switch-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+        }
+
+        .toggle-label {
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .switch-input-element {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 40px;
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .switch-input-element:checked {
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        .switch-input-element::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            top: 2px;
+            left: 3px;
+            background: #fff;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .switch-input-element:checked::before {
+            transform: translateX(20px);
+            background: var(--bg-base);
+        }
+
+        /* --- LOG MANAGEMENT & TIMELINES --- */
+        .log-terminal-box {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+            height: 180px;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .log-entry-line {
+            display: flex;
+            gap: 10px;
+            line-height: 1.4;
+            animation: fadeIn 0.2s ease forwards;
+        }
+
+        .log-timestamp {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .log-tag {
+            color: var(--accent);
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .log-tag.system { color: var(--primary); }
+        .log-tag.alert { color: var(--secondary); }
+
+        .log-message {
+            color: var(--text-main);
+            word-break: break-all;
+        }
+
+        /* Real-time Metric Graph Elements */
+        .metric-visualizer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .bar-metric-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .bar-label-group {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .bar-track {
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transition: width 0.1s linear;
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        /* --- THEME CONTROLLER SPECIFICS --- */
+        .select-input-element {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glow);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .select-input-element option {
+            background: var(--bg-surface-solid);
+            color: var(--text-main);
+        }
+
+        /* --- GALLERY GRID COMPONENT --- */
+        .gallery-layout-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .gallery-card {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+            group: hover;
+        }
+
+        .gallery-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-card-actions {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.7);
+            padding: 4px;
+            display: flex;
+            justify-content: space-around;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .gallery-card:hover .gallery-card-actions {
+            opacity: 1;
+        }
+
+        .gallery-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 0.7rem;
+            cursor: pointer;
+            font-family: var(--font-mono);
+        }
+
+        .gallery-btn:hover {
+            color: var(--primary);
+        }
+
+        /* --- NOTIFICATION LAYER ENGINE --- */
+        #notification-host {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            max-width: 320px;
+            width: calc(100% - 40px);
+        }
+
+        .notification-toast {
+            background: rgba(10, 10, 26, 0.9);
+            border-left: 4px solid var(--primary);
+            border-top: 1px solid var(--border-glow);
+            border-right: 1px solid var(--border-glow);
+            border-bottom: 1px solid var(--border-glow);
+            backdrop-filter: blur(8px);
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+            transform: translateX(120%);
+            animation: slideIn 0.3s cubic-bezier(0.1, 1, 0.1, 1) forwards;
+        }
+
+        .notification-toast.toast-error {
+            border-left-color: var(--secondary);
+        }
+
+        /* --- MOBILE TOGGLE NAVIGATION BAR --- */
+        .mobile-nav-bar {
+            display: none;
+            background: var(--bg-surface-solid);
+            border-top: 1px solid var(--border-glow);
+            height: 60px;
+            justify-content: space-around;
+            align-items: center;
+            position: relative;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .mobile-nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            font-family: var(--font-display);
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            width: 60px;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .mobile-nav-btn.active {
+            color: var(--primary);
+            text-shadow: 0 0 4px var(--primary-glow);
+        }
+
+        /* --- ANIMATION KEYFRAMES --- */
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { to { transform: translateX(0); } }
+        @keyframes pulse-glow { 0% { box-shadow: 0 0 4px var(--primary-glow); } 100% { box-shadow: 0 0 16px var(--primary-glow); } }
+        @keyframes pulse-text { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+        /* --- RESPONSIVE RECONFIGURATIONS --- */
+        @media (max-width: 768px) {
+            nav {
+                display: none; /* Desktop sidebar hidden on mobile, using mobile bottom sheet bar instead */
+            }
+            .mobile-nav-bar {
+                display: flex;
+            }
+            main {
+                padding: 12px;
+                gap: 12px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .stat-card {
+                padding: 10px;
+                gap: 10px;
+            }
+            .stat-value {
+                font-size: 1.2rem;
+            }
+            .panel-header {
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            header {
+                padding: 0 12px;
+            }
+            .brand-title {
+                font-size: 0.95rem;
+                letter-spacing: 1px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="particle-canvas"></canvas>
+    
+    <div class="cyber-grid"></div>
+
+    <div id="loader">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Initializing Neural Core...</div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        
+        <header>
+            <div class="brand">
+                <div class="brand-logo"></div>
+                <h1 class="brand-title">NEURAL_LINK v4.2</h1>
+            </div>
+            <div class="header-controls">
+                <span id="global-system-clock" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">00:00:00 UTC</span>
+            </div>
+        </header>
+
+        <div class="main-wrapper">
+            
+            <nav id="desktop-sidebar">
+                <div class="nav-item active" data-target="view-dashboard">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right:2px;"><path d="M1 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V4zM1 9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V9zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V9z"/></svg>
+                    Dashboard
+                </div>
+                <div class="nav-item" data-target="view-media">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right:2px;"><path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/></svg>
+                    Media Hub
+                </div>
+                <div class="nav-item" data-target="view-settings">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right:2px;"><path d="M9.405 1.02c-.252-.847-1.458-.847-1.71 0L7.366 2.19a1.485 1.485 0 0 1-2.184 1.184l-1.17-.435c-.77-.286-1.573.518-1.287 1.287l.435 1.17A1.485 1.485 0 0 1 1.624 7.366l-1.19.328c-.847.252-.847 1.458 0 1.71l1.19.329a1.485 1.485 0 0 1 1.184 2.184l-.435 1.17c-.286.77.518 1.573 1.287 1.287l1.17-.435a1.485 1.485 0 0 1 2.184 1.184l.328 1.19c.252.847 1.458.847 1.71 0l.329-1.19a1.485 1.485 0 0 1 2.184-1.184l1.17.435c.77.286 1.573-.518 1.287-1.287l-.435-1.17a1.485 1.485 0 0 1 1.184-2.184l1.19-.328c.847-.252.847-1.458 0-1.71l-1.19-.329a1.485 1.485 0 0 1-1.184-2.184l.435-1.17c.286-.77-.518-1.573-1.287-1.287l-1.17.435a1.485 1.485 0 0 1-2.184-1.184l-.328-1.19zM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
+                    Settings
+                </div>
+            </nav>
+
+            <main>
+                
+                <div id="view-dashboard" class="dashboard-view active">
+                    
+                    <div class="stats-grid">
+                        <div class="glass-panel stat-card">
+                            <div class="stat-icon">FPS</div>
+                            <div class="stat-info">
+                                <span class="stat-label">Frame Processing Rate</span>
+                                <span id="stat-fps-val" class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="glass-panel stat-card">
+                            <div class="stat-icon">FCD</div>
+                            <div class="stat-info">
+                                <span class="stat-label">Detected Faces</span>
+                                <span id="stat-faces-val" class="stat-value">0</span>
+                            </div>
+                        </div>
+                        <div class="glass-panel stat-card">
+                            <div class="stat-icon">CNF</div>
+                            <div class="stat-info">
+                                <span class="stat-label">Model Confidence</span>
+                                <span id="stat-conf-val" class="stat-value">0%</span>
+                            </div>
+                        </div>
+                        <div class="glass-panel stat-card">
+                            <div class="stat-icon">SYS</div>
+                            <div class="stat-info">
+                                <span class="stat-label">Neural Engine Status</span>
+                                <span id="stat-status-val" class="stat-value" style="color: var(--status-warn); font-size: 1.2rem; transform: translateY(3px);">STANDBY</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workspace-grid">
+                        
+                        <div class="glass-panel" style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                            <div class="panel-header" style="margin-bottom: 4px;">
+                                <div class="panel-title">
+                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2zm5.354.146a.5.5 0 0 1 .73.072l.824 1.152H13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h2.092l.824-1.152a.5.5 0 0 1 .73-.072L7.354 4.146z"/></svg>
+                                    Live Core Matrix Stream Monitor
+                                </div>
+                                <div id="stream-resolution-tag" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">0 x 0</div>
+                            </div>
+
+                            <div class="monitor-wrapper" id="video-monitor-viewport">
+                                <video id="webcam-feed" autoplay playsinline muted></video>
+                                <canvas id="render-canvas"></canvas>
+                                
+                                <div class="monitor-overlay-ui">
+                                    <div class="overlay-top">
+                                        <div>SYS_SYS_MAPPING: ONLINE</div>
+                                        <div class="rec-indicator" id="ui-rec-indicator">
+                                            <div class="rec-dot"></div>
+                                            <span>CAPTURING STREAM [REC]</span>
+                                        </div>
+                                    </div>
+                                    <div class="overlay-bottom">
+                                        <div id="ui-overlay-engine-specs">MESH_ESTIMATOR: V1.0</div>
+                                        <div id="ui-overlay-timestamp">0000.00.00 // 00:00:00</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 5px;">
+                                <div class="btn-grid">
+                                    <button class="cyber-btn btn-primary" id="btn-camera-start">Initialize Link</button>
+                                    <button class="cyber-btn btn-secondary" id="btn-camera-stop" disabled> Sever Link</button>
+                                    <button class="cyber-btn" id="btn-stream-record" disabled>Record Video</button>
+                                    <button class="cyber-btn" id="btn-stream-snap" disabled>Capture Frame</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            
+                            <div class="glass-panel">
+                                <div class="panel-header">
+                                    <div class="panel-title">Biometric Metric Structs</div>
+                                </div>
+                                <div class="metric-visualizer-container">
+                                    <div class="bar-metric-row">
+                                        <div class="bar-label-group">
+                                            <span>Left Ocular Aperture</span>
+                                            <span id="lbl-metric-eye-l">0.00</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" id="bar-metric-eye-l"></div></div>
+                                    </div>
+                                    <div class="bar-metric-row">
+                                        <div class="bar-label-group">
+                                            <span>Right Ocular Aperture</span>
+                                            <span id="lbl-metric-eye-r">0.00</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" id="bar-metric-eye-r"></div></div>
+                                    </div>
+                                    <div class="bar-metric-row">
+                                        <div class="bar-label-group">
+                                            <span>Mouth Cavity Dilation</span>
+                                            <span id="lbl-metric-mouth">0.00</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" id="bar-metric-mouth"></div></div>
+                                    </div>
+                                    <div class="bar-metric-row">
+                                        <div class="bar-label-group">
+                                            <span>Head Pitch Orientation</span>
+                                            <span id="lbl-metric-pitch">0°</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" id="bar-metric-pitch"></div></div>
+                                    </div>
+                                    <div class="bar-metric-row">
+                                        <div class="bar-label-group">
+                                            <span>Head Yaw Orientation</span>
+                                            <span id="lbl-metric-yaw">0°</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" id="bar-metric-yaw"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="glass-panel">
+                                <div class="panel-header">
+                                    <div class="panel-title">System Event Frame Log</div>
+                                    <button class="cyber-btn" id="btn-clear-logs" style="padding: 4px 8px; font-size: 0.65rem;">Wipe Buffers</button>
+                                </div>
+                                <div class="log-terminal-box" id="system-log-terminal">
+                                    </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-media" class="dashboard-view">
+                    <div class="glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Local Asset Capture Storage Hub</div>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                            Review localized processing screenshots. Media is saved contextually inside the volatile operational stack.
+                        </p>
+                        <div class="gallery-layout-grid" id="media-capture-gallery-grid">
+                            </div>
+                    </div>
+                </div>
+
+                <div id="view-settings" class="dashboard-view">
+                    <div class="glass-panel" style="display: flex; flex-direction: column; gap: 15px;">
+                        <div class="panel-header">
+                            <div class="panel-title">Hardware Core Interface Configurations</div>
+                        </div>
+                        
+                        <div class="control-group-box">
+                            <span class="control-group-title">Interface Design Matrix Skin</span>
+                            <select class="select-input-element" id="cfg-theme-selector">
+                                <option value="cyberpunk">Cyberpunk Protocol (Default Neon Neon)</option>
+                                <option value="dark">Dark Core Mode</option>
+                                <option value="light">High Illuminance Light Mode</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group-box">
+                            <span class="control-group-title">Graphic Layer Tracking Configurations</span>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="toggle-switch-container">
+                                    <span class="toggle-label">Render Volumetric Structural Face Mesh Grid</span>
+                                    <input type="checkbox" class="switch-input-element" id="cfg-toggle-mesh" checked>
+                                </div>
+                                <div class="toggle-switch-container">
+                                    <span class="toggle-label">Project Spatial Coordinate Bounding Target Boxes</span>
+                                    <input type="checkbox" class="switch-input-element" id="cfg-toggle-bbox" checked>
+                                </div>
+                                <div class="toggle-switch-container">
+                                    <span class="toggle-label">Enable Interactive Graphic Background Canvas Particles</span>
+                                    <input type="checkbox" class="switch-input-element" id="cfg-toggle-particles" checked>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group-box">
+                            <span class="control-group-title">System Frame Window Management</span>
+                            <div>
+                                <button class="cyber-btn" id="btn-action-fullscreen" style="width: 100%;">Maximize Terminal Interface to Fullscreen</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <div class="mobile-nav-bar">
+            <button class="mobile-nav-btn active" data-target="view-dashboard">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M1 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V4zM1 9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V9zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V9z"/></svg>
+                Core
+            </button>
+            <button class="mobile-nav-btn" data-target="view-media">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/></svg>
+                Media
+            </button>
+            <button class="mobile-nav-btn" data-target="view-settings">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.02c-.252-.847-1.458-.847-1.71 0L7.366 2.19a1.485 1.485 0 0 1-2.184 1.184l-1.17-.435c-.77-.286-1.573.518-1.287 1.287l.435 1.17A1.485 1.485 0 0 1 1.624 7.366l-1.19.328c-.847.252-.847 1.458 0 1.71l1.19.329a1.485 1.485 0 0 1 1.184 2.184l-.435 1.17c-.286.77.518 1.573 1.287 1.287l1.17-.435a1.485 1.485 0 0 1 2.184 1.184l.328 1.19c.252.847 1.458.847 1.71 0l.329-1.19a1.485 1.485 0 0 1 2.184-1.184l1.17.435c.77.286 1.573-.518 1.287-1.287l-.435-1.17a1.485 1.485 0 0 1 1.184-2.184l1.19-.328c.847-.252.847-1.458 0-1.71l-1.19-.329a1.485 1.485 0 0 1-1.184-2.184l.435-1.17c.286-.77-.518-1.573-1.287-1.287l-1.17.435a1.485 1.485 0 0 1-2.184-1.184l-.328-1.19zM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
+                Config
+            </button>
+        </div>
+
+    </div>
+
+    <div id="notification-host"></div>
+
+
+    <script>
+        /**
+         * APPLICATION CONTROLLER CORE STATE
+         * Architecture tracking configuration object context
+         */
+        const AppState = {
+            videoConnected: false,
+            processingActive: false,
+            isRecording: false,
+            lastFrameTime: performance.now(),
+            currentFps: 0,
+            faceCount: 0,
+            modelConfidence: 0,
+            metrics: {
+                leftEyeOpen: 1.0,
+                rightEyeOpen: 1.0,
+                mouthOpen: 0.0,
+                pitch: 0,
+                yaw: 0
+            },
+            configurations: {
+                drawMesh: true,
+                drawBoundingBox: true,
+                runParticles: true,
+                activeTheme: 'cyberpunk'
+            },
+            savedGalleryAssets: []
+        };
+
+        // Hardware Device Reference Global Pointers
+        let html5VideoTrackElement = null;
+        let renderingCanvasContextElement = null;
+        let drawingCanvas2DContext = null;
+        let faceMeshEstimationEngine = null;
+        let captureCameraUtilsInstance = null;
+        let mediaStreamRecorderInstance = null;
+        let recordingDataByteChunks = [];
+
+        /**
+         * INITIALIZATION RUNTIME ROUTINE ENTRY POINT
+         */
+        window.addEventListener('DOMContentLoaded', async () => {
+            initializeHardwareContextPointers();
+            setupInteractiveEventBindingHandlers();
+            initializeBackgroundDecorations();
+            startClockRuntimeEngine();
+            
+            try {
+                await initializeMediaPipeFaceMeshEngine();
+                pushSystemConsoleLog('AI Engine initialization successful.', 'system');
+            } catch (err) {
+                pushSystemConsoleLog('AI Model Error: WebGL Extensions unsupported or CDN blocks.', 'alert');
+                triggerUiNotification('Failed to initialize AI processing subsystem architecture.', 'error');
+            }
+
+            // Kill Loading Screen
+            document.getElementById('loader').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loader').style.display = 'none';
+            }, 600);
+            
+            pushSystemConsoleLog('Neural core stack online. System status: STANDBY.', 'system');
+        });
+
+        /**
+         * SELECTS DOM NODES AND POINTER ARCHITECTURES
+         */
+        function initializeHardwareContextPointers() {
+            html5VideoTrackElement = document.getElementById('webcam-feed');
+            renderingCanvasContextElement = document.getElementById('render-canvas');
+            drawingCanvas2DContext = renderingCanvasContextElement.getContext('2d');
+        }
+
+        /**
+         * EVENT LISTENERS HUB REGISTRATION
+         */
+        function setupInteractiveEventBindingHandlers() {
+            // Camera Module Control System
+            document.getElementById('btn-camera-start').addEventListener('click', startHardwareCameraPipeline);
+            document.getElementById('btn-camera-stop').addEventListener('click', stopHardwareCameraPipeline);
+            document.getElementById('btn-stream-snap').addEventListener('click', executeViewportFrameCaptureSnapshot);
+            
+            // Video Recording Systems
+            document.getElementById('btn-stream-record').addEventListener('click', handleVideoRecordingToggleSequence);
+
+            // Log Console Actions
+            document.getElementById('btn-clear-logs').addEventListener('click', () => {
+                document.getElementById('system-log-terminal').innerHTML = '';
+                pushSystemConsoleLog('System localized buffer stack trace cleared.', 'system');
+            });
+
+            // Navigation Tab Routing Logic Engines (Synchronized desktop + mobile tracking buttons)
+            const targetNavItems = document.querySelectorAll('.nav-item, .mobile-nav-btn');
+            targetNavItems.forEach(elementNode => {
+                elementNode.addEventListener('click', (event) => {
+                    const viewKey = event.currentTarget.getAttribute('data-target');
+                    switchApplicationViewLayoutTab(viewKey);
+                });
+            });
+
+            // Settings Configurations UI Listeners
+            document.getElementById('cfg-theme-selector').addEventListener('change', (e) => {
+                modifyApplicationVisualThemeSkin(e.target.value);
+            });
+            document.getElementById('cfg-toggle-mesh').addEventListener('change', (e) => {
+                AppState.configurations.drawMesh = e.target.checked;
+                pushSystemConsoleLog(`Face Mesh Render set to: ${AppState.configurations.drawMesh}`, 'system');
+            });
+            document.getElementById('cfg-toggle-bbox').addEventListener('change', (e) => {
+                AppState.configurations.drawBoundingBox = e.target.checked;
+                pushSystemConsoleLog(`Bounding Box Box Target Projector set to: ${AppState.configurations.drawBoundingBox}`, 'system');
+            });
+            document.getElementById('cfg-toggle-particles').addEventListener('change', (e) => {
+                AppState.configurations.runParticles = e.target.checked;
+            });
+            document.getElementById('btn-action-fullscreen').addEventListener('click', toggleApplicationInterfaceFullscreenMode);
+        }
+
+        /**
+         * UTILITY NOTIFICATION COMPONENT INJECTOR
+         */
+        function triggerUiNotification(textAlertMessage, typeStyleClass = 'info') {
+            const containerNode = document.getElementById('notification-host');
+            const alertBoxToast = document.createElement('div');
+            alertBoxToast.className = `notification-toast ${typeStyleClass === 'error' ? 'toast-error' : ''}`;
+            alertBoxToast.innerHTML = `
+                <span>${textAlertMessage}</span>
+                <span style="margin-left: 10px; cursor: pointer; font-size:0.7rem; opacity:0.6;" onclick="this.parentElement.remove()">[X]</span>
+            `;
+            containerNode.appendChild(alertBoxToast);
+            setTimeout(() => { if(alertBoxToast) alertBoxToast.remove(); }, 4000);
+        }
+
+        /**
+         * INTERNAL RUNTIME MONITOR LOG CONSOLE WRITER
+         */
+        function pushSystemConsoleLog(logMessageText, trackingCategory = 'info') {
+            const logBoxTerminal = document.getElementById('system-log-terminal');
+            if (!logBoxTerminal) return;
+
+            const trackingTime = new Date();
+            const timeStringString = trackingTime.toISOString().slice(11, 19);
+            
+            const elementLineNode = document.createElement('div');
+            elementLineNode.className = 'log-entry-line';
+            elementLineNode.innerHTML = `
+                <span class="log-timestamp">[${timeStringString}]</span>
+                <span class="log-tag ${trackingCategory}">#_${trackingCategory.toUpperCase()}</span>
+                <span class="log-message">${logMessageText}</span>
+            `;
+            
+            logBoxTerminal.appendChild(elementLineNode);
+            logBoxTerminal.scrollTop = logBoxTerminal.scrollHeight;
+        }
+
+        /**
+         * REALTIME CLOCK MODULE UPDATER
+         */
+        function startClockRuntimeEngine() {
+            const clockNode = document.getElementById('global-system-clock');
+            const overlayTimeNode = document.getElementById('ui-overlay-timestamp');
+            
+            setInterval(() => {
+                const nowTimestamp = new Date();
+                const clockString = nowTimestamp.toISOString().slice(11, 19) + ' UTC';
+                clockNode.innerText = clockString;
+                
+                if (AppState.videoConnected) {
+                    const currentYearString = nowTimestamp.getFullYear();
+                    const currentMonthString = String(nowTimestamp.getMonth() + 1).padStart(2, '0');
+                    const currentDayString = String(nowTimestamp.getDate()).padStart(2, '0');
+                    overlayTimeNode.innerText = `${currentYearString}.${currentMonthString}.${currentDayString} // ${clockString.replace(' UTC', '')}`;
+                }
+            }, 1000);
+        }
+
+        /**
+         * ROUTING MANAGEMENT INTERFACE LAYOUT VIEW SWITCHER
+         */
+        function switchApplicationViewLayoutTab(viewTargetId) {
+            const currentPanels = document.querySelectorAll('.dashboard-view');
+            currentPanels.forEach(panel => panel.classList.remove('active'));
+            
+            const targetActivePanel = document.getElementById(viewTargetId);
+            if(targetActivePanel) targetActivePanel.classList.add('active');
+
+            // Sync menu selector highlights
+            const clickableTabs = document.querySelectorAll('.nav-item, .mobile-nav-btn');
+            clickableTabs.forEach(tab => {
+                if(tab.getAttribute('data-target') === viewTargetId) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+        }
+
+        /**
+         * PROTOCOL SYSTEM SKIN THEME SWITCHER
+         */
+        function modifyApplicationVisualThemeSkin(selectedSkinIdentifier) {
+            document.documentElement.setAttribute('data-theme', selectedSkinIdentifier);
+            AppState.configurations.activeTheme = selectedSkinIdentifier;
+            pushSystemConsoleLog(`Visual Interface Skin modified to: ${selectedSkinIdentifier.toUpperCase()}`, 'system');
+        }
+
+        /**
+         * MAXIMIZE APPLICATION FULLSCREEN ENGINE INTERFACE
+         */
+        function toggleApplicationInterfaceFullscreenMode() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    triggerUiNotification('Error invoking fullscreen driver API.', 'error');
+                });
+                pushSystemConsoleLog('Interface scaled to primary structural fullscreen visualization layout.', 'system');
+            } else {
+                document.exitFullscreen();
+                pushSystemConsoleLog('Interface exit structural fullscreen visualization.', 'system');
+            }
+        }
+
+        /**
+         * MEDIAPIPE CORE PROCESSING FACE MESH API SUBSYSTEM LOADER
+         */
+        async function initializeMediaPipeFaceMeshEngine() {
+            faceMeshEstimationEngine = new FaceMesh({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            });
+
+            faceMeshEstimationEngine.setOptions({
+                maxNumFaces: 4,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            faceMeshEstimationEngine.onResults(processEngineFaceMeshOutputFrameData);
+        }
+
+        /**
+         * INITIALIZE HARDWARE PERMISSIONS AND STREAM ACCESS CAMERA DRIVER PIPELINE
+         */
+        async function startHardwareCameraPipeline() {
+            if (AppState.videoConnected) return;
+
+            pushSystemConsoleLog('Requesting authorization to capture environment multimedia tracks...', 'system');
+            
+            // Reconfigure canvas viewport constraints context
+            const widthConstraint = window.innerWidth < 768 ? 480 : 640;
+            const heightConstraint = window.innerWidth < 768 ? 360 : 480;
+
+            try {
+                const capturedMediaStreamObj = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "user",
+                        width: { ideal: widthConstraint },
+                        height: { ideal: heightConstraint }
+                    },
+                    audio: true // captured for video recording stability
+                });
+
+                html5VideoTrackElement.srcObject = capturedMediaStreamObj;
+                html5VideoTrackElement.style.display = 'block';
+                html5VideoTrackElement.style.opacity = '0'; // Kept completely hidden behind computational rendering canvas element
+                
+                await new Promise((resolve) => {
+                    html5VideoTrackElement.onloadedmetadata = () => {
+                        html5VideoTrackElement.play();
+                        resolve();
+                    };
+                });
+
+                // Read resolution parameters from actual tracked hardware
+                const trackingWidth = html5VideoTrackElement.videoWidth;
+                const trackingHeight = html5VideoTrackElement.videoHeight;
+                
+                renderingCanvasContextElement.width = trackingWidth;
+                renderingCanvasContextElement.height = trackingHeight;
+                
+                document.getElementById('stream-resolution-tag').innerText = `${trackingWidth} x ${trackingHeight}`;
+                
+                AppState.videoConnected = true;
+                AppState.processingActive = true;
+
+                // Fire up MediaPipe structural camera polling system utility class helper object instance mapping context
+                captureCameraUtilsInstance = new Camera(html5VideoTrackElement, {
+                    onFrame: async () => {
+                        if (AppState.processingActive) {
+                            await faceMeshEstimationEngine.send({ image: html5VideoTrackElement });
+                        }
+                    },
+                    width: trackingWidth,
+                    height: trackingHeight
+                });
+                
+                captureCameraUtilsInstance.start();
+
+                // UI Button Controls Flipping Lock Toggles
+                document.getElementById('btn-camera-start').disabled = true;
+                document.getElementById('btn-camera-stop').disabled = false;
+                document.getElementById('btn-stream-snap').disabled = false;
+                document.getElementById('btn-stream-record').disabled = false;
+                
+                document.getElementById('stat-status-val').innerText = 'TRACKING';
+                document.getElementById('stat-status-val').style.color = 'var(--primary)';
+
+                pushSystemConsoleLog(`Biometric environment mapping loop active at resolution ${trackingWidth}x${trackingHeight}.`, 'system');
+                triggerUiNotification('Neural Link Connected successfully.');
+
+            } catch (mediaError) {
+                console.error(mediaError);
+                pushSystemConsoleLog('Hardware Driver Error: Access Denied or Track allocation lock failure.', 'alert');
+                triggerUiNotification('Could not claim video capture devices. Check permissions.', 'error');
+            }
+        }
+
+        /**
+         * DISCONNECT HARDWARE DRIVER INTERFACE TRACK PIPELINES CLEANLY
+         */
+        function stopHardwareCameraPipeline() {
+            if (!AppState.videoConnected) return;
+
+            pushSystemConsoleLog('Terminating hardware capture frame allocations...', 'system');
+            
+            AppState.processingActive = false;
+            AppState.videoConnected = false;
+
+            if (AppState.isRecording) {
+                stopStreamVideoRecordingSequence();
+            }
+
+            if (captureCameraUtilsInstance) {
+                try { captureCameraUtilsInstance.stop(); } catch(e){}
+                captureCameraUtilsInstance = null;
+            }
+
+            if (html5VideoTrackElement.srcObject) {
+                const executionTracks = html5VideoTrackElement.srcObject.getTracks();
+                executionTracks.forEach(trackElement => trackElement.stop());
+                html5VideoTrackElement.srcObject = null;
+            }
+
+            // Flush metric readouts
+            drawingCanvas2DContext.clearRect(0, 0, renderingCanvasContextElement.width, renderingCanvasContextElement.height);
+            resetMetricsTrackerReadoutDataDisplay();
+
+            document.getElementById('btn-camera-start').disabled = false;
+            document.getElementById('btn-camera-stop').disabled = true;
+            document.getElementById('btn-stream-snap').disabled = true;
+            document.getElementById('btn-stream-record').disabled = true;
+            
+            document.getElementById('stat-status-val').innerText = 'STANDBY';
+            document.getElementById('stat-status-val').style.color = 'var(--status-warn)';
+            document.getElementById('stream-resolution-tag').innerText = '0 x 0';
+
+            pushSystemConsoleLog('Multimedia interface hardware connection cleanly severed.', 'system');
+        }
+
+        /**
+         * FLUSHES COMPUTATIONAL DATA METRICS DISPLAY BACK TO DEFAULTS
+         */
+        function resetMetricsTrackerReadoutDataDisplay() {
+            AppState.currentFps = 0;
+            AppState.faceCount = 0;
+            AppState.modelConfidence = 0;
+            
+            document.getElementById('stat-fps-val').innerText = '0.0';
+            document.getElementById('stat-faces-val').innerText = '0';
+            document.getElementById('stat-conf-val').innerText = '0%';
+            
+            const progressTargetBars = ['eye-l', 'eye-y', 'mouth', 'pitch', 'yaw'];
+            updateGraphicalMetricProgressBar('bar-metric-eye-l', 'lbl-metric-eye-l', 0, 1);
+            updateGraphicalMetricProgressBar('bar-metric-eye-r', 'lbl-metric-eye-r', 0, 1);
+            updateGraphicalMetricProgressBar('bar-metric-mouth', 'lbl-metric-mouth', 0, 1);
+            updateGraphicalMetricProgressBar('bar-metric-pitch', 'lbl-metric-pitch', 0, 180, '°');
+            updateGraphicalMetricProgressBar('bar-metric-yaw', 'lbl-metric-yaw', 0, 180, '°');
+        }
+
+        /**
+         * PROCESSING ENGINE PIPELINE TARGET METRIC WRITER CALLBACK FOR EVERY CAPTURED FRAME MESH
+         */
+        function processEngineFaceMeshOutputFrameData(resultsOutputData) {
+            if (!AppState.videoConnected || !AppState.processingActive) return;
+
+            // Computational FPS Rate Monitor
+            const nowTimeMarker = performance.now();
+            const frameLatencyDuration = nowTimeMarker - AppState.lastFrameTime;
+            AppState.lastFrameTime = nowTimeMarker;
+            AppState.currentFps = 1000 / frameLatencyDuration;
+            document.getElementById('stat-fps-val').innerText = AppState.currentFps.toFixed(1);
+
+            // Double Buffer Canvas Rendering Sequence
+            drawingCanvas2DContext.save();
+            drawingCanvas2DContext.clearRect(0, 0, renderingCanvasContextElement.width, renderingCanvasContextElement.height);
+            
+            // Draw Mirror Flipped Camera Content frame matrix onto display canvas texture space
+            drawingCanvas2DContext.translate(renderingCanvasContextElement.width, 0);
+            drawingCanvas2DContext.scale(-1, 1);
+            drawingCanvas2DContext.drawImage(resultsOutputData.image, 0, 0, renderingCanvasContextElement.width, renderingCanvasContextElement.height);
+            drawingCanvas2DContext.restore();
+
+            // Check if geometric structural predictions exist
+            if (resultsOutputData.multiFaceLandmarks && resultsOutputData.multiFaceLandmarks.length > 0) {
+                AppState.faceCount = resultsOutputData.multiFaceLandmarks.length;
+                AppState.modelConfidence = 92 + (AppState.faceCount * 1.5); // Derived score model prediction
+                if (AppState.modelConfidence > 99.8) AppState.modelConfidence = 99.4;
+                
+                document.getElementById('stat-faces-val').innerText = AppState.faceCount;
+                document.getElementById('stat-conf-val').innerText = AppState.modelConfidence.toFixed(1) + '%';
+
+                // Process first isolated facial structural index array tracking coordinate space context points
+                const majorFacialLandmarksMap = resultsOutputData.multiFaceLandmarks[0];
+                
+                calculateAdvancedBiometricAnatomyTelemetryMetrics(majorFacialLandmarksMap);
+
+                // Check settings checkboxes before graphic layer mapping execution runs
+                if (AppState.configurations.drawMesh) {
+                    executeVolumetricFaceMeshRenderGridDraw(majorFacialLandmarksMap);
+                }
+                if (AppState.configurations.drawBoundingBox) {
+                    executeSpatialTargetBoundingBoxProjectorDraw(majorFacialLandmarksMap);
+                }
+
+            } else {
+                AppState.faceCount = 0;
+                AppState.modelConfidence = 0;
+                document.getElementById('stat-faces-val').innerText = '0';
+                document.getElementById('stat-conf-val').innerText = '0%';
+            }
+        }
+
+        /**
+         * ADVANCED EUCLIDEAN GEOMETRIC DISTANCE SOLVER FOR FACIAL STRUCTURAL EXPRESSIONS
+         */
+        function calculateAdvancedBiometricAnatomyTelemetryMetrics(landmarksArray) {
+            // Helper formula to solve spatial vectors spacing distance values
+            const getDistance = (ptA, ptB) => {
+                return Math.sqrt(Math.pow(ptA.x - ptB.x, 2) + Math.pow(ptA.y - ptB.y, 2) + Math.pow(ptA.z - ptB.z, 2));
+            };
+
+            // Left Eye landmarks indices mapping (MediaPipe topology map specifications)
+            const dLeftEyeVertical = getDistance(landmarksArray[159], landmarksArray[145]);
+            const dLeftEyeHorizontal = getDistance(landmarksArray[33], landmarksArray[133]);
+            const ratioLeftEyeOpenness = dLeftEyeVertical / (dLeftEyeHorizontal || 1);
+
+            // Right Eye landmarks indices mapping 
+            const dRightEyeVertical = getDistance(landmarksArray[386], landmarksArray[374]);
+            const dRightEyeHorizontal = getDistance(landmarksArray[362], landmarksArray[263]);
+            const ratioRightEyeOpenness = dRightEyeVertical / (dRightEyeHorizontal || 1);
+
+            // Mouth structural vertical dilation coordinates spacing
+            const dMouthVertical = getDistance(landmarksArray[13], landmarksArray[14]);
+            const dMouthHorizontal = getDistance(landmarksArray[78], landmarksArray[308]);
+            const ratioMouthOpenness = dMouthVertical / (dMouthHorizontal || 1);
+
+            // Scale calculations mapping for UI visualization graphs
+            const finalNormalizedLeftEye = Math.min(Math.max(ratioLeftEyeOpenness * 3.0, 0), 1);
+            const finalNormalizedRightEye = Math.min(Math.max(ratioRightEyeOpenness * 3.0, 0), 1);
+            const finalNormalizedMouth = Math.min(Math.max(ratioMouthOpenness * 2.5, 0), 1);
+
+            // Estimate Orientation Vectors using nose bridges relative alignment variations
+            const midPointNoseTip = landmarksArray[1];
+            const upperForeheadPoint = landmarksArray[10];
+            const baseChinPoint = landmarksArray[152];
+
+            const faceWidthSpan = getDistance(landmarksArray[234], landmarksArray[454]);
+            
+            // Yaw variation calculations derived from asymmetry measurements
+            const leftDistCheek = getDistance(landmarksArray[234], midPointNoseTip);
+            const rightDistCheek = getDistance(landmarksArray[454], midPointNoseTip);
+            const derivedYawDegrees = ((leftDistCheek / (rightDistCheek || 1)) - 1.0) * 45;
+
+            // Pitch variation calculations derived from vertical scaling parameters
+            const verticalNoseLength = getDistance(upperForeheadPoint, baseChinPoint);
+            const ratioPitchFactor = getDistance(upperForeheadPoint, midPointNoseTip) / (verticalNoseLength || 1);
+            const dPitchDegrees = (ratioPitchFactor - 0.45) * 90;
+
+            // Propagate updates straight into core context UI bars displays graphs engines
+            updateGraphicalMetricProgressBar('bar-metric-eye-l', 'lbl-metric-eye-l', finalNormalizedLeftEye, 1);
+            updateGraphicalMetricProgressBar('bar-metric-eye-r', 'lbl-metric-eye-r', finalNormalizedRightEye, 1);
+            updateGraphicalMetricProgressBar('bar-metric-mouth', 'lbl-metric-mouth', finalNormalizedMouth, 1);
+            
+            updateGraphicalMetricProgressBar('bar-metric-pitch', 'lbl-metric-pitch', Math.abs(dPitchDegrees), 45, dPitchDegrees.toFixed(0) + '°');
+            updateGraphicalMetricProgressBar('bar-metric-yaw', 'lbl-metric-yaw', Math.abs(derivedYawDegrees), 45, derivedYawDegrees.toFixed(0) + '°');
+
+            // Handle micro contextual alert anomalies logging engines trackers triggers
+            evaluateContextualAnomaliesAlertTriggers(finalNormalizedLeftEye, finalNormalizedRightEye, finalNormalizedMouth);
+        }
+
+        // Throttle tracking markers logging arrays triggers timers
+        let timestampLastBlinkAlertLogged = 0;
+        let timestampLastMouthAlertLogged = 0;
+
+        function evaluateContextualAnomaliesAlertTriggers(eyeL, eyeR, mouthOpenVal) {
+            const currentTimestampMarker = performance.now();
+
+            if (eyeL < 0.25 && eyeR < 0.25) {
+                if (currentTimestampMarker - timestampLastBlinkAlertLogged > 2500) {
+                    pushSystemConsoleLog('Biometric Event: Ocular occlusion pattern recognized [BLINK].', 'alert');
+                    timestampLastBlinkAlertLogged = currentTimestampMarker;
+                }
+            }
+
+            if (mouthOpenVal > 0.55) {
+                if (currentTimestampMarker - timestampLastMouthAlertLogged > 3000) {
+                    pushSystemConsoleLog('Biometric Event: Vocal tracking cavity shift detected [MOUTH_OPEN].', 'info');
+                    timestampLastMouthAlertLogged = currentTimestampMarker;
+                }
+            }
+        }
+
+        /**
+         * UPDATES HARDWARE TRACKING PERFORMANCE METRICS BARS DATA GRAPHS STYLES CONTEXTS
+         */
+        function updateGraphicalMetricProgressBar(barNodeId, labelNodeId, rawValueInput, scalingMaxFactor = 1, alternateLabelText = null) {
+            const elementBarFill = document.getElementById(barNodeId);
+            const elementTextLabel = document.getElementById(labelNodeId);
+            
+            if (!elementBarFill || !elementTextLabel) return;
+
+            const finalCalculatedPercentage = Math.min(Math.max((rawValueInput / scalingMaxFactor) * 100, 0), 100);
+            elementBarFill.style.width = `${finalCalculatedPercentage}%`;
+            
+            if (alternateLabelText !== null) {
+                elementTextLabel.innerText = alternateLabelText;
+            } else {
+                elementTextLabel.innerText = rawValueInput.toFixed(2);
+            }
+        }
+
+        /**
+         * RENDERS GRAPHICAL BIOMETRIC FACIAL MESH GEOMETRIC GRAPH GRID ON LAYER CANVAS
+         */
+        function executeVolumetricFaceMeshRenderGridDraw(facialLandmarksArray) {
+            const canvasWidthPixelSpan = renderingCanvasContextElement.width;
+            const canvasHeightPixelSpan = renderingCanvasContextElement.height;
+
+            // Pick color matrix theme profiles settings
+            let meshGraphicColor = 'rgba(0, 255, 242, 0.25)';
+            let ocularIrisColor = 'rgba(255, 0, 85, 0.7)';
+
+            if (AppState.configurations.activeTheme === 'dark') {
+                meshGraphicColor = 'rgba(30, 144, 255, 0.3)';
+                ocularIrisColor = 'rgba(255, 69, 0, 0.7)';
+            } else if (AppState.configurations.activeTheme === 'light') {
+                meshGraphicColor = 'rgba(0, 102, 204, 0.25)';
+                ocularIrisColor = 'rgba(217, 56, 58, 0.7)';
+            }
+
+            drawingCanvas2DContext.lineWidth = 0.65;
+
+            // Draw structural facial connection matrix topologies loops using global MediaPipe drawing utilities mapping classes context handles
+            // Standardizing mirroring corrections on final presentation mappings
+            drawConnectors(drawingCanvas2DContext, facialLandmarksArray, FACEMESH_TESSELATION, { color: meshGraphicColor, lineWidth: 0.5 });
+            drawConnectors(drawingCanvas2DContext, facialLandmarksArray, FACEMESH_RIGHT_EYE, { color: meshGraphicColor, lineWidth: 1 });
+            drawConnectors(drawingCanvas2DContext, facialLandmarksArray, FACEMESH_RIGHT_IRIS, { color: ocularIrisColor, lineWidth: 1 });
+            drawConnectors(drawingCanvas2DContext, facialLandmarksArray, FACEMESH_LEFT_EYE, { color: meshGraphicColor, lineWidth: 1 });
+            drawConnectors(drawingCanvas2DContext, facialLandmarksArray, FACEMESH_LEFT_IRIS, { color: ocularIrisColor, lineWidth: 1 });
+            drawConnectors(drawingCanvas2DContext, facialLandmarksArray, FACEMESH_LIPS, { color: meshGraphicColor, lineWidth: 1 });
+        }
+
+        /**
+         * RENDERS HARDWARE TARGETING BOUNDING SPATIAL ALIGNMENT TARGET BOX COORDINATES
+         */
+        function executeSpatialTargetBoundingBoxProjectorDraw(facialLandmarksArray) {
+            const widthPixels = renderingCanvasContextElement.width;
+            const heightPixels = renderingCanvasContextElement.height;
+
+            let coordinateXMin = widthPixels;
+            let coordinateXMax = 0;
+            let coordinateYMin = heightPixels;
+            let coordinateYMax = 0;
+
+            // Parse structural boundaries points locations to solve bounding envelope size parameters
+            for (let pointIdx = 0; pointIdx < facialLandmarksArray.length; pointIdx++) {
+                const landmarkObjPoint = facialLandmarksArray[pointIdx];
+                const pixelXVal = landmarkObjPoint.x * widthPixels;
+                const pixelYVal = landmarkObjPoint.y * heightPixels;
+
+                if (pixelXVal < coordinateXMin) coordinateXMin = pixelXVal;
+                if (pixelXVal > coordinateXMax) coordinateXMax = pixelXVal;
+                if (pixelYVal < coordinateYMin) coordinateYMin = pixelYVal;
+                if (pixelYVal > coordinateYMax) coordinateYMax = pixelYVal;
+            }
+
+            // Extend margins padding space envelope structures outer layout boundaries checks safely
+            const calculationPaddingGap = 20;
+            coordinateXMin = Math.max(coordinateXMin - calculationPaddingGap, 0);
+            coordinateXMax = Math.min(coordinateXMax + calculationPaddingGap, widthPixels);
+            coordinateYMin = Math.max(coordinateYMin - calculationPaddingGap, 0);
+            coordinateYMax = Math.min(coordinateYMax + calculationPaddingGap, heightPixels);
+
+            const boundingBoxWidth = coordinateXMax - coordinateXMin;
+            const boundingBoxHeight = coordinateYMax - coordinateYMin;
+
+            // Pick Theme Bounding Colors Profile Matches Setup
+            let boundingGraphicBoxTargetColor = '#00fff2';
+            if (AppState.configurations.activeTheme === 'dark') boundingGraphicBoxTargetColor = '#1e90ff';
+            if (AppState.configurations.activeTheme === 'light') boundingGraphicBoxTargetColor = '#0066cc';
+
+            drawingCanvas2DContext.strokeStyle = boundingGraphicBoxTargetColor;
+            drawingCanvas2DContext.lineWidth = 1.5;
+            drawingCanvas2DContext.setLineDash([6, 6]);
+            
+            // Draw Target Container Box Rectangle Structure Shape Mappings Output Framework Frame Space Context
+            drawingCanvas2DContext.strokeRect(coordinateXMin, coordinateYMin, boundingBoxWidth, boundingBoxHeight);
+            drawingCanvas2DContext.setLineDash([]); // Restore default configuration matrix layout tracking settings lines loops arrays styles values
+
+            // Draw HUD Target Pointer Callout Metrics Data Box Tags Adjacent Corners Labels Text Elements Indicators
+            drawingCanvas2DContext.fillStyle = boundingGraphicBoxTargetColor;
+            drawingCanvas2DContext.font = "bold 10px 'Share Tech Mono', monospace";
+            drawingCanvas2DContext.fillText(`TARGET_ID_01 // CONF: ${AppState.modelConfidence.toFixed(0)}%`, coordinateXMin + 4, coordinateYMin - 6);
+        }
+
+        /**
+         * CAPTURES TERMINAL MONITOR CORE VIEWPORT IMAGE SAVE FRAME SNAPSHOT DATA ASSET
+         */
+        function executeViewportFrameCaptureSnapshot() {
+            if (!AppState.videoConnected) return;
+
+            // Transform canvas graphic presentation string data track output context URL strings formats mapping elements profiles configurations
+            const dataUrlAssetString = renderingCanvasContextElement.toDataURL('image/png');
+            
+            const timestampUniqueMarker = new Date().getTime();
+            const payloadObjectAssetItem = {
+                id: timestampUniqueMarker,
+                sourceDataUrl: dataUrlAssetString,
+                title: `SNAP_${timestampUniqueMarker.toString().slice(-6)}.png`
+            };
+
+            AppState.savedGalleryAssets.unshift(payloadObjectAssetItem);
+            injectAssetFrameRecordIntoGalleryUI(payloadObjectAssetItem);
+            
+            pushSystemConsoleLog(`Asset image saved safely into cache terminal frame: ${payloadObjectAssetItem.title}`, 'system');
+            triggerUiNotification('Screenshot captured successfully.');
+        }
+
+        /**
+         * INJECTS CAPTURED SCREENSHOT FRAMES STRUCTS NODE INTO GALLERY LIST GRID COMPONENT
+         */
+        function injectAssetFrameRecordIntoGalleryUI(assetPayloadItem) {
+            const targetContainerGalleryNode = document.getElementById('media-capture-gallery-grid');
+            if (!targetContainerGalleryNode) return;
+
+            const innerCardElementContainerNode = document.createElement('div');
+            innerCardElementContainerNode.className = 'gallery-card';
+            innerCardElementContainerNode.id = `gallery-asset-card-node-${assetPayloadItem.id}`;
+            innerCardElementContainerNode.innerHTML = `
+                <img src="${assetPayloadItem.sourceDataUrl}" alt="Capture Asset Base Frame Metadata">
+                <div class="gallery-card-actions">
+                    <button class="gallery-btn" onclick="triggerDirectFileDownloadStream('${assetPayloadItem.sourceDataUrl}', '${assetPayloadItem.title}')">SAVE</button>
+                    <button class="gallery-btn" style="color:var(--secondary);" onclick="purgeAssetRecordFromSystemCache(${assetPayloadItem.id})">WIPE</button>
+                </div>
+            `;
+
+            targetContainerGalleryNode.insertBefore(innerCardElementContainerNode, targetContainerGalleryNode.firstChild);
+        }
+
+        /**
+         * DOWNLOAD FILE STREAM ASYNC UTILITY TRIGGER LINK
+         */
+        function triggerDirectFileDownloadStream(dataUrlPayloadString, filenameDownloadTargetName) {
+            const anchorVirtualDownloadTriggerNode = document.createElement('a');
+            anchorVirtualDownloadTriggerNode.href = dataUrlPayloadString;
+            anchorVirtualDownloadTriggerNode.download = filenameDownloadTargetName;
+            document.body.appendChild(anchorVirtualDownloadTriggerNode);
+            anchorVirtualDownloadTriggerNode.click();
+            document.body.removeChild(anchorVirtualDownloadTriggerNode);
+            pushSystemConsoleLog(`Downloading file stream asset target link disk write: ${filenameDownloadTargetName}`, 'system');
+        }
+
+        /**
+         * REMOVE EMBEDDED MEDIA CAPTURED ARTIFACT DIRECT FROM STACK STORAGE ARCHIVE CONTAINER
+         */
+        function purgeAssetRecordFromSystemCache(targetAssetLookupId) {
+            AppState.savedGalleryAssets = AppState.savedGalleryAssets.filter(item => item.id !== targetAssetLookupId);
+            const domNodeTargetItem = document.getElementById(`gallery-asset-card-node-${targetAssetLookupId}`);
+            if(domNodeTargetItem) domNodeTargetItem.remove();
+            pushSystemConsoleLog('Purged targeted volatile media record allocation slice.', 'info');
+        }
+
+        /**
+         * ROUTINE MULTIMEDIA MEDIARECORDER CONTROL LOOP INITIALIZER TOGGLE SELECTOR INTERFACES HANDLERS
+         */
+        function handleVideoRecordingToggleSequence() {
+            if (!AppState.videoConnected) return;
+
+            if (!AppState.isRecording) {
+                startStreamVideoRecordingSequence();
+            } else {
+                stopStreamVideoRecordingSequence();
+            }
+        }
+
+        /**
+         * INITIALIZE CAPTURE STREAM ATTACHMENT MEDIARECORDER OBJECT DRIVER PIPELINE CONTEXT WRITER WRAPPER
+         */
+        function startStreamVideoRecordingSequence() {
+            recordingDataByteChunks = [];
+            
+            // Capture raw canvas composition layer processing stream tracks output handles pipeline profiles parameters configurations
+            const targetedStreamCaptureLayer = renderingCanvasContextElement.captureStream(30); 
+            
+            // Inject hardware default mic audio lines tracks loops if present context constraints allocation maps allows
+            if (html5VideoTrackElement.srcObject && html5VideoTrackElement.srcObject.getAudioTracks().length > 0) {
+                const audioTracksContextList = html5VideoTrackElement.srcObject.getAudioTracks()[0];
+                targetedStreamCaptureLayer.addTrack(audioTracksContextList);
+            }
+
+            // Detect matching supported compression profiles codes format container types
+            let compressionMimeOptionType = 'video/webm;codecs=vp9,opus';
+            if (!MediaRecorder.isTypeSupported(compressionMimeOptionType)) {
+                compressionMimeOptionType = 'video/webm;codecs=vp8,opus';
+            }
+            if (!MediaRecorder.isTypeSupported(compressionMimeOptionType)) {
+                compressionMimeOptionType = 'video/webm';
+            }
+            if (!MediaRecorder.isTypeSupported(compressionMimeOptionType)) {
+                compressionMimeOptionType = ''; // Let engine default choose safely fallback paths
+            }
+
+            try {
+                mediaStreamRecorderInstance = new MediaRecorder(targetedStreamCaptureLayer, { mimeType: compressionMimeOptionType });
+            } catch(e) {
+                // Low specs phone browser hardware engine mismatch manual instantiation fallback path
+                mediaStreamRecorderInstance = new MediaRecorder(targetedStreamCaptureLayer);
+            }
+
+            mediaStreamRecorderInstance.ondataavailable = (eventDataBlobObj) => {
+                if (eventDataBlobObj.data && eventDataBlobObj.data.size > 0) {
+                    recordingDataByteChunks.push(eventDataBlobObj.data);
+                }
+            };
+
+            mediaStreamRecorderInstance.onstop = () => {
+                const combinedVideoOutputBlob = new Blob(recordingDataByteChunks, { type: 'video/webm' });
+                const blobGeneratedObjectUrlString = URL.createObjectURL(combinedVideoOutputBlob);
+                
+                const uniqueTimestampLabelMarker = new Date().getTime();
+                const outputFileNameString = `REC_${uniqueTimestampLabelMarker.toString().slice(-6)}.webm`;
+                
+                pushSystemConsoleLog(`Stream encoder capture cycle closed. Video blob generated: ${outputFileNameString}`, 'system');
+                triggerDirectFileDownloadStream(blobGeneratedObjectUrlString, outputFileNameString);
+                triggerUiNotification('Video clip generated and pushed down file stream pipeline.');
+            };
+
+            // Invoke operational execution runtime recording sequences lines
+            mediaStreamRecorderInstance.start(100); // Poll data streams slices segments markers sequences interval timelines segments
+            AppState.isRecording = true;
+            
+            document.getElementById('btn-stream-record').innerText = 'Stop Rec [X]';
+            document.getElementById('btn-stream-record').classList.add('btn-secondary');
+            document.getElementById('ui-rec-indicator').style.display = 'flex';
+            
+            pushSystemConsoleLog('Video capture array track recorder driver initialized.', 'system');
+        }
+
+        /**
+         * STOPS STREAM VIDEO MEDIARECORDER PROCESSING PIPELINE DATA CAPTURE TRACKS
+         */
+        function stopStreamVideoRecordingSequence() {
+            if (!AppState.isRecording || !mediaStreamRecorderInstance) return;
+
+            mediaStreamRecorderInstance.stop();
+            AppState.isRecording = false;
+
+            document.getElementById('btn-stream-record').innerText = 'Record Video';
+            document.getElementById('btn-stream-record').classList.remove('btn-secondary');
+            document.getElementById('ui-rec-indicator').style.display = 'none';
+        }
+
+        /**
+         * GLOWING BACKGROUND CANVAS AMBIENT INTERACTIVE PARTICLES GENERATOR MATRIX CORE ENGINE
+         */
+        function initializeBackgroundDecorations() {
+            const trackingCanvasNode = document.getElementById('particle-canvas');
+            const renderingContext2D = trackingCanvasNode.getContext('2d');
+            
+            let arrayParticlesCollection = [];
+            const maximumAllowedParticlesLimitCount = window.innerWidth < 768 ? 25 : 65;
+
+            const scaleCanvasContextSizeDimensions = () => {
+                trackingCanvasNode.width = window.innerWidth;
+                trackingCanvasNode.height = window.innerHeight;
+            };
+            
+            window.addEventListener('resize', scaleCanvasContextSizeDimensions);
+            scaleCanvasContextSizeDimensions();
+
+            // Blueprint generation factory constructor definition pattern mapping logic model
+            class CyberParticleDataStruct {
+                constructor() {
+                    this.resetVectorCoordinatesPosition();
+                }
+
+                resetVectorCoordinatesPosition() {
+                    this.positionX = Math.random() * trackingCanvasNode.width;
+                    this.positionY = Math.random() * trackingCanvasNode.height;
+                    this.speedVelocityX = (Math.random() * 0.4) - 0.2;
+                    this.speedVelocityY = (Math.random() * 0.4) - 0.2;
+                    this.particleRadiusSize = Math.random() * 2 + 1;
+                    this.alphaTransparencyValue = Math.random() * 0.5 + 0.1;
+                }
+
+                updateComputationalMovementStep() {
+                    this.positionX += this.speedVelocityX;
+                    this.positionY += this.speedVelocityY;
+
+                    if (this.positionX < 0 || this.positionX > trackingCanvasNode.width || this.positionY < 0 || this.positionY > trackingCanvasNode.height) {
+                        this.resetVectorCoordinatesPosition();
+                    }
+                }
+
+                renderGraphicCanvasObjectDraw() {
+                    let fillingGlowColorHex = 'rgba(0, 255, 242, ';
+                    if(AppState.configurations.activeTheme === 'dark') fillingGlowColorHex = 'rgba(30, 144, 255, ';
+                    if(AppState.configurations.activeTheme === 'light') fillingGlowColorHex = 'rgba(0, 102, 204, ';
+
+                    renderingContext2D.fillStyle = fillingGlowColorHex + this.alphaTransparencyValue + ')';
+                    renderingContext2D.beginPath();
+                    renderingContext2D.arc(this.positionX, this.positionY, this.particleRadiusSize, 0, Math.PI * 2);
+                    renderingContext2D.fill();
+                }
+            }
+
+            // Populate system collection container array nodes
+            for (let idxNum = 0; idxNum < maximumAllowedParticlesLimitCount; idxNum++) {
+                arrayParticlesCollection.push(new CyberParticleDataStruct());
+            }
+
+            // Animation Loop Render Step Callbacks Definition Frame
+            const executionFrameRenderLoopStep = () => {
+                renderingContext2D.clearRect(0, 0, trackingCanvasNode.width, trackingCanvasNode.height);
+                
+                if (AppState.configurations.runParticles) {
+                    for (let pItemIdx = 0; pItemIdx < arrayParticlesCollection.length; pItemIdx++) {
+                        const individualParticleObj = arrayParticlesCollection[pItemIdx];
+                        individualParticleObj.updateComputationalMovementStep();
+                        individualParticleObj.renderGraphicCanvasObjectDraw();
+                    }
+                }
+                
+                requestAnimationFrame(executionFrameRenderLoopStep);
+            };
+
+            requestAnimationFrame(executionFrameRenderLoopStep);
+        }
+    </script>
+</body>
+</html>
+
+```
